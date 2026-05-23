@@ -22,7 +22,7 @@ class Prep_meteo:
         
         if self.meteo_type == "ecmwf_ifs":     
                    
-            ecmwf_ifs(self.cyc_date, self.cyc_hour, self.fhour, self.meteo_db_path).download()
+            ecmwf_ifs(self.cyc_date, self.cyc_hour, self.fhour, self.meteo_db_path).run()
 
 if __name__ == "__main__":
     meteo_db_path = r"D:\projects\Flood_Model\earth_sight\meteo_db"

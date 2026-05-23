@@ -9,11 +9,13 @@ Created on Sat May 23, 2026
 
 from ecmwf.opendata import Client
 from pathlib import Path
-
+import xarray as xr
 
 class ecmwf_ifs:
     def __init__(self, cyc_date, cyc_hour, fhour, meteo_db_path):
         self.meteo_db_path = meteo_db_path
+        self.cyc_date = cyc_date
+        self.cyc_hour = cyc_hour
         self.request = {
             "date": cyc_date,
             "time": cyc_hour,
@@ -32,9 +34,27 @@ class ecmwf_ifs:
         )
     
     def download(self):
-        self.grib_file = Path(self.meteo_db_path)/ "ecmwf_ifs" / "_tmp_grib.grib2"
+        self.grib_file = Path(self.meteo_db_path)/ "ecmwf_ifs" / f"{self.cyc_date}_{self.cyc_hour}.grib2"
         self.grib_file.parent.mkdir(parents=True, exist_ok=True)
         self.client.retrieve(self.request, self.grib_file)
+
+    def grib2nc(self):
+
+        self.nc_file = Path(self.meteo_db_path)/ "ecmwf_ifs" / f"{self.cyc_date}_{self.cyc_hour}.nc"
+        ds = xr.open_dataset(self.grib_file, engine="cfgrib") 
+        ds.to_netcdf(self.nc_file)
+        ds.close()
+
+        # Delete grib
+        self.grib_file.unlink(missing_ok=True)
+
+        # Delete all associated .idx files
+        for idx_file in self.grib_file.parent.glob(f"{self.grib_file.name}*.idx"):
+            idx_file.unlink(missing_ok=True)
+
+    def run(self):
+        self.download()
+        self.grib2nc()
 
 if __name__ == "__main__":
     

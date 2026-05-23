@@ -12,7 +12,8 @@ from pathlib import Path
 import xarray as xr
 
 class ecmwf_ifs:
-    def __init__(self, cyc_date, cyc_hour, fhour, meteo_db_path):
+    def __init__(self, cyc_date, cyc_hour, fhour, meteo_db_path, range_lat, range_lon ):
+    
         self.meteo_db_path = meteo_db_path
         self.cyc_date = cyc_date
         self.cyc_hour = cyc_hour
@@ -32,6 +33,12 @@ class ecmwf_ifs:
             preserve_request_order=False,
             infer_stream_keyword=True,
         )
+        
+        self.min_lon= min(range_lon)
+        self.max_lon = max(range_lon)
+        self.min_lat= min(range_lat)
+        self.max_lat = max(range_lat)
+        
     
     def download(self):
         self.grib_file = Path(self.meteo_db_path)/ "ecmwf_ifs" / f"{self.cyc_date}_{self.cyc_hour}.grib2"
@@ -41,7 +48,20 @@ class ecmwf_ifs:
     def grib2nc(self):
 
         self.nc_file = Path(self.meteo_db_path)/ "ecmwf_ifs" / f"{self.cyc_date}_{self.cyc_hour}.nc"
-        ds = xr.open_dataset(self.grib_file, engine="cfgrib") 
+        ds = xr.open_dataset(self.grib_file, engine="cfgrib")
+        
+        ### Cut the lat lon in place 
+        ds = ds.sel(
+            longitude=slice(float(self.min_lon), float(self.max_lon)),
+            latitude=slice(float(self.max_lat), float(self.min_lat))   # ECMWF latitude is usually descending
+        )
+        
+        # Convert tp from m to mm
+        ds["tp"] = ds["tp"] * 1000
+
+        # Update metadata
+        ds["tp"].attrs["units"] = "mm"
+        
         ds.to_netcdf(self.nc_file)
         ds.close()
 
@@ -55,6 +75,7 @@ class ecmwf_ifs:
     def run(self):
         self.download()
         self.grib2nc()
+
 
 if __name__ == "__main__":
     
